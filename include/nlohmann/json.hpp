@@ -8052,6 +8052,84 @@ class basic_json
     }
 
     /*!
+    @brief execute a provided function once for each item in a container
+
+    Iterates over a list of elements, yielding each in turn to an iteratee function. The iteratee is bound to the context
+    object, if one is passed. Each invocation of iteratee is called with three arguments: (element, index, list). If list is a
+    JavaScript object, iteratee's arguments will be (value, key, list). Returns the list for chaining.
+
+    @param iteratee  Callable object accepting 3 arguments
+    @param iteratee.value The value of the current item
+    @param iteratee.key The key/index of the current item
+    @param iteratee.object The JSON container being iterated
+
+    @throw type_error.302 if not is_object() or not is_array()
+
+    @complexity Linear in the size the JSON container.
+
+    @example j["list"].each([](auto value, auto key){ object[key] = std::to_string(value); });
+
+    @since never
+    */
+    template <typename Function>
+    void each(Function function) {
+        switch ((*this).m_type) {
+
+            case detail::value_t::object: {
+                // iterate object and use keys as reference string
+                for (auto& element : *(*this).m_value.object) {
+                    function(element.second, basic_json(element.first));
+                }
+                break;
+            }
+
+            case detail::value_t::array: {
+                // iterate array and use index as reference string
+                for (std::size_t i = 0; i < (*this).m_value.array->size(); ++i) {
+                    function((*this).m_value.array->operator[](i), basic_json(i));
+                }
+                break;
+            }
+
+            default: {
+                // maybe throw an error
+                JSON_THROW(type_error::create(302, "type must be array or object, but is " + std::string((*this).type_name())));
+                break;
+            }
+        }
+    }
+
+    template <typename Function>
+    void each(Function function) const {
+        switch ((*this).m_type) {
+
+            case detail::value_t::object: {
+                // iterate object and use keys as reference string
+                for (const auto& element : *(*this).m_value.object) {
+                    function(element.second, basic_json(element.first));
+                }
+                break;
+            }
+
+            case detail::value_t::array: {
+                auto len = (*this).m_value.array->size();
+                // iterate array and use index as reference string
+                for (std::size_t i = 0; i < len; ++i) {
+                    function((*this).m_value.array->operator[](i), basic_json(i));
+                }
+                break;
+            }
+
+            default: {
+                // maybe throw an error
+                JSON_THROW(type_error::create(302, "type must be array or object, but is " + std::string((*this).type_name())));
+                break;
+            }
+        }
+    }
+
+
+    /*!
     @brief return flattened JSON value
 
     The function creates a JSON object whose keys are JSON pointers (see [RFC
